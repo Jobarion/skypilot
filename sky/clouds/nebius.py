@@ -1,6 +1,7 @@
 """ Nebius Cloud. """
 import json
 import os
+import tempfile
 import typing
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
@@ -48,6 +49,17 @@ def nebius_profile_in_aws_cred_and_config() -> bool:
 
     return (nebius_profile_exists_in_credentials and
             nebius_profile_exists_in_config)
+
+
+def _write_nebius_temp_credential_file(prefix: str, value: str) -> str:
+    """Materialize effective Nebius config into a temporary uploadable file."""
+    with tempfile.NamedTemporaryFile(prefix=prefix,
+                                     delete=False,
+                                     mode='w',
+                                     encoding='utf-8') as temp_file:
+        temp_file.write(value)
+        temp_file.write('\n')
+        return temp_file.name
 
 
 @registry.CLOUD_REGISTRY.register
@@ -479,10 +491,25 @@ class Nebius(clouds.Cloud):
         return (False, hints) if hints else (True, hints)
 
     def get_credential_file_mounts(self) -> Dict[str, str]:
-        credential_file_mounts = {
-            filepath: filepath
-            for filepath in nebius.get_credential_file_paths()
-        }
+        credential_file_mounts = {}
+        tenant_id_path = nebius.tenant_id_path()
+        tenant_id = nebius.get_tenant_id()
+        if tenant_id is not None:
+            credential_file_mounts[tenant_id_path] = (
+                _write_nebius_temp_credential_file('nebius-tenant-id-',
+                                                   tenant_id))
+
+        iam_token_path = nebius.iam_token_path()
+        iam_token = nebius.get_iam_token()
+        if iam_token is not None:
+            credential_file_mounts[iam_token_path] = (
+                _write_nebius_temp_credential_file('nebius-iam-token-',
+                                                   iam_token))
+
+        for filepath in nebius.get_credential_file_paths():
+            if filepath in (tenant_id_path, iam_token_path):
+                continue
+            credential_file_mounts[filepath] = filepath
         if nebius_profile_in_aws_cred_and_config():
             credential_file_mounts['~/.aws/credentials'] = '~/.aws/credentials'
             credential_file_mounts['~/.aws/config'] = '~/.aws/config'
