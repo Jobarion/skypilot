@@ -55,8 +55,6 @@ class Nebius(clouds.Cloud):
     """Nebius GPU Cloud"""
     _REPR = 'Nebius'
     _CLOUD_UNSUPPORTED_FEATURES = {
-        clouds.CloudImplementationFeatures.AUTODOWN:
-            ('Autodown not supported. Can\'t delete OS disk.'),
         clouds.CloudImplementationFeatures.CLONE_DISK_FROM_CLUSTER:
             (f'Migrating disk is currently not supported on {_REPR}.'),
         clouds.CloudImplementationFeatures.CUSTOM_NETWORK_TIER:
