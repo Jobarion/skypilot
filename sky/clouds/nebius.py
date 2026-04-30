@@ -53,9 +53,7 @@ def nebius_profile_in_aws_cred_and_config() -> bool:
 
 def _write_nebius_temp_credential_file(prefix: str, value: str) -> str:
     """Materialize effective Nebius config into a temporary uploadable file."""
-    with tempfile.NamedTemporaryFile(prefix=prefix,
-                                     delete=False,
-                                     mode='w',
+    with tempfile.NamedTemporaryFile(prefix=prefix, mode='w',
                                      encoding='utf-8') as temp_file:
         temp_file.write(value)
         temp_file.write('\n')
@@ -495,19 +493,15 @@ class Nebius(clouds.Cloud):
         tenant_id_path = nebius.tenant_id_path()
         tenant_id = nebius.get_tenant_id()
         if tenant_id is not None:
+            # NOTE: We can't guarantee that the file will be deleted eventually,
+            # but it doesn't contain sensitive information and should be cleaned
+            # up by the OS eventually.
             credential_file_mounts[tenant_id_path] = (
                 _write_nebius_temp_credential_file('nebius-tenant-id-',
                                                    tenant_id))
 
-        iam_token_path = nebius.iam_token_path()
-        iam_token = nebius.get_iam_token()
-        if iam_token is not None:
-            credential_file_mounts[iam_token_path] = (
-                _write_nebius_temp_credential_file('nebius-iam-token-',
-                                                   iam_token))
-
         for filepath in nebius.get_credential_file_paths():
-            if filepath in (tenant_id_path, iam_token_path):
+            if filepath == tenant_id_path:
                 continue
             credential_file_mounts[filepath] = filepath
         if nebius_profile_in_aws_cred_and_config():
